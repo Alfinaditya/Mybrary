@@ -3,23 +3,10 @@ const Router=express.Router()
 // Node libarary
 const path=require('path')
 const fs=require('fs')
-// Third party library
-const multer=require('multer')
-// models
 const Author=require('../models/author')
 const Book=require('../models/book')
 
-const uploadPath=path.join('public',Book.coverImageBasePath)
 const imageMimeTypes=['image/jpeg','image/png','image/gif']
-const upload=multer({
-    // destinasi upload folder
-    dest:uploadPath,
-    fileFilter:(req,file,callback)=>{
-        // imagemimetypes = type image
-        callback(null,imageMimeTypes.includes(file.mimetype))
-    }
-
-})
 
 // All Books Route
 Router.get('/',async (req,res)=>{
@@ -48,33 +35,23 @@ Router.get('/',async (req,res)=>{
 Router.get('/new',async (req,res)=>{
     renderNewPage(res,new Book())
 })
-Router.post('/',upload.single('cover'),async (req,res)=>{
-    const filename=req.file != null ? req.file.filename : null
+Router.post('/',async (req,res)=>{
     const book=new Book({
         title:req.body.title,
         author:req.body.author,
         publishDate:new Date(req.body.publishDate),
         pageCount:req.body.pageCount,
-        // path file akan di store ke sini
-        coverImageName:filename,
         description:req.body.description
     })
+    // req.body.cover isinya bisa diliat di dokumentasi
+    saveCover(book,req.body.cover)
     try{
         const newBook=await book.save()
         res.redirect('/books')
-    }catch{
-        if (book.coverImageName !=null ) {
-            removeBookCover(book.coverImageName)
-        }
-        
+    }catch{        
         renderNewPage(res,book,true)
     }
 })
-function removeBookCover(fileName) {
-    fs.unlink(path.join(uploadPath,fileName),err=>{
-        if(err) console.log(err)
-    })
-}
 async function renderNewPage(res,book,hasError=false){
     try{
         const authors=await Author.find({})
@@ -85,6 +62,14 @@ async function renderNewPage(res,book,hasError=false){
         res.render('books/new',params)
     }catch{
         res.redirect('/books')
+    }
+}
+function saveCover(book,coverencoded) {
+    if (coverencoded==null) return
+    const cover=JSON.parse(coverencoded)
+    if (cover !=null && imageMimeTypes.includes(cover.type)) {
+        book.coverImage=new Buffer.from(cover.data,'base64')
+        book.coverImageType=cover.type
     }
 }
 module.exports=Router
