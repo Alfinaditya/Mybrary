@@ -28,8 +28,7 @@ Router.post('/',async (req,res)=>{
     try {
         const newAuthor=await author.save()
         res.redirect('authors')
-    } catch (error) {
-        res.render('authors/new',)
+    } catch {
         res.render('authors/new',{
             author:author,
             errorMessage : `something went wrong`
